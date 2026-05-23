@@ -75,7 +75,11 @@ importers:
         specifier: workspace:*
         version: link:../providers
 
-  packages/providers: {}
+  packages/providers:
+    dependencies:
+      '@hermes-clone/config':
+        specifier: workspace:*
+        version: link:../config
 
   packages/skills: {}
 

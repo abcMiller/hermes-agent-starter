@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import { HermesConfig } from '@hermes-clone/config';
 import { MemoryStore, JsonSessionStore } from '@hermes-clone/memory';
-import { MockProvider, OpenAICompatibleProvider, ModelProvider } from '@hermes-clone/providers';
+import { ProviderResolver, ModelProvider } from '@hermes-clone/providers';
 import { SkillLoader } from '@hermes-clone/skills';
 import { createShellTool, listFilesTool, readFileTool, ToolRegistry, writeFileTool } from '@hermes-clone/tools';
 import { AgentRuntime } from './AgentRuntime.js';
@@ -34,16 +34,8 @@ export async function createRuntime(
   await fs.mkdir(config.workspaceDir, { recursive: true });
   await fs.mkdir(config.dataDir, { recursive: true });
 
-  // 创建或使用自定义 Provider
-  const provider: ModelProvider = options.provider ?? (
-    config.provider === 'mock'
-      ? new MockProvider()
-      : new OpenAICompatibleProvider({
-          apiKey: config.apiKey,
-          baseUrl: config.baseUrl,
-          timeout: 60000,  // 60 秒超时
-        })
-  );
+  // 使用 ProviderResolver 或自定义 Provider
+  const provider: ModelProvider = options.provider ?? ProviderResolver.resolve(config);
 
   // 注册工具
   const tools = new ToolRegistry()

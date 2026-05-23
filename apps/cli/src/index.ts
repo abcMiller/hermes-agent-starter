@@ -4,7 +4,8 @@ import { stdin as input, stdout as output } from 'node:process';
 import { Command } from 'commander';
 import { loadConfig } from '@hermes-clone/config';
 import { createRuntime } from '@hermes-clone/agent-core';
-import { ConsoleLogger, Logger } from '@hermes-clone/agent-core';
+import { ProviderResolver } from '@hermes-clone/providers';
+import { ConsoleLogger } from '@hermes-clone/agent-core';
 
 /**
  * 简单的控制台日志（带颜色）
@@ -44,6 +45,14 @@ program.command('chat')
   .action(async (opts) => {
     const config = loadConfig(process.cwd());
     const logger = new ColoredLogger();
+
+    // 验证配置
+    const validation = ProviderResolver.validateConfig(config);
+    if (!validation.valid) {
+      console.error(`\x1b[31m配置错误: ${validation.error}\x1b[0m`);
+      console.log('运行 \x1b[36mhermes-clone providers\x1b[0m 查看支持的 Provider 配置示例');
+      process.exit(1);
+    }
 
     if (opts.debug) {
       process.env.HERMES_DEBUG = 'true';
@@ -121,15 +130,21 @@ program.command('health')
   .description('Check provider health')
   .action(async () => {
     const config = loadConfig(process.cwd());
+
+    // 验证配置
+    const validation = ProviderResolver.validateConfig(config);
+    if (!validation.valid) {
+      console.error(`\x1b[31m配置错误: ${validation.error}\x1b[0m`);
+      process.exit(1);
+    }
+
     const runtime = await createRuntime(config);
 
-    // 这里需要添加 healthCheck 方法到 runtime
-    console.log(`Provider: ${config.provider}`);
-    console.log(`Model: ${config.model}`);
-    console.log(`Base URL: ${config.baseUrl}`);
-    console.log('\nChecking provider health...');
+    console.log(`\x1b[1mProvider:\x1b[0m ${config.provider}`);
+    console.log(`\x1b[1mModel:\x1b[0m ${config.model}`);
+    console.log(`\x1b[1mBase URL:\x1b[0m ${config.baseUrl}`);
+    console.log('\nChecking provider health...\n');
 
-    // 简单的测试调用
     try {
       const result = await runtime.run({ sessionId: '_health', text: 'ping' });
       console.log(`\x1b[32m✓ Provider is healthy\x1b[0m`);
@@ -138,6 +153,33 @@ program.command('health')
       }
     } catch (error) {
       console.log(`\x1b[31m✗ Provider error:\x1b[0m`, error);
+      process.exit(1);
+    }
+  });
+
+program.command('providers')
+  .description('List supported providers and configuration examples')
+  .option('--detailed', 'show detailed configuration examples')
+  .action((opts) => {
+    const examples = ProviderResolver.getConfigExamples();
+
+    console.log('\x1b[1m\x1b[36m支持的 Provider:\x1b[0m\n');
+
+    for (const [name, example] of Object.entries(examples)) {
+      console.log(`\x1b[1m${name}:\x1b[0m`);
+      console.log(`  ${example.description}`);
+
+      if (opts.detailed) {
+        console.log(`  \x1b[90m环境变量配置:\x1b[0m`);
+        for (const [key, value] of Object.entries(example.envVars)) {
+          console.log(`    \x1b[33m${key}\x1b[0m=${value}`);
+        }
+      }
+      console.log('');
+    }
+
+    if (!opts.detailed) {
+      console.log('使用 \x1b[36m--detailed\x1b[0m 查看详细配置示例\n');
     }
   });
 
