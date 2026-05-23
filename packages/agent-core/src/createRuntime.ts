@@ -5,15 +5,47 @@ import { MockProvider, OpenAICompatibleProvider, ModelProvider } from '@hermes-c
 import { SkillLoader } from '@hermes-clone/skills';
 import { createShellTool, listFilesTool, readFileTool, ToolRegistry, writeFileTool } from '@hermes-clone/tools';
 import { AgentRuntime } from './AgentRuntime.js';
+import { AgentRuntimeOptions } from './types.js';
 
-export async function createRuntime(config: HermesConfig): Promise<AgentRuntime> {
+/**
+ * 创建 AgentRuntime 的额外选项
+ */
+export interface CreateRuntimeOptions {
+  /** 自定义日志记录器 */
+  logger?: AgentRuntimeOptions['logger'];
+  /** 最大工具调用次数 */
+  maxToolCalls?: number;
+  /** 自定义 Provider（用于测试） */
+  provider?: ModelProvider;
+}
+
+/**
+ * 创建并初始化 AgentRuntime
+ *
+ * @param config - Hermes 配置
+ * @param options - 额外的运行时选项
+ * @returns 初始化完成的 AgentRuntime 实例
+ */
+export async function createRuntime(
+  config: HermesConfig,
+  options: CreateRuntimeOptions = {}
+): Promise<AgentRuntime> {
+  // 确保必要的目录存在
   await fs.mkdir(config.workspaceDir, { recursive: true });
   await fs.mkdir(config.dataDir, { recursive: true });
 
-  const provider: ModelProvider = config.provider === 'mock'
-    ? new MockProvider()
-    : new OpenAICompatibleProvider({ apiKey: config.apiKey, baseUrl: config.baseUrl });
+  // 创建或使用自定义 Provider
+  const provider: ModelProvider = options.provider ?? (
+    config.provider === 'mock'
+      ? new MockProvider()
+      : new OpenAICompatibleProvider({
+          apiKey: config.apiKey,
+          baseUrl: config.baseUrl,
+          timeout: 60000,  // 60 秒超时
+        })
+  );
 
+  // 注册工具
   const tools = new ToolRegistry()
     .register(listFilesTool)
     .register(readFileTool)
@@ -24,9 +56,11 @@ export async function createRuntime(config: HermesConfig): Promise<AgentRuntime>
       allowedCommands: config.tools.allowedShellCommands,
     }));
 
+  // 初始化 Memory
   const memory = new MemoryStore(config.dataDir);
   await memory.ensure();
 
+  // 创建 AgentRuntime
   return new AgentRuntime({
     config,
     provider,
@@ -34,5 +68,7 @@ export async function createRuntime(config: HermesConfig): Promise<AgentRuntime>
     memory,
     sessions: new JsonSessionStore(config.dataDir),
     skills: new SkillLoader(config.dataDir),
+    logger: options.logger,
+    maxToolCalls: options.maxToolCalls,
   });
 }

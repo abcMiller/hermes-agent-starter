@@ -4,6 +4,30 @@ import { stdin as input, stdout as output } from 'node:process';
 import { Command } from 'commander';
 import { loadConfig } from '@hermes-clone/config';
 import { createRuntime } from '@hermes-clone/agent-core';
+import { ConsoleLogger, Logger } from '@hermes-clone/agent-core';
+
+/**
+ * 简单的控制台日志（带颜色）
+ */
+class ColoredLogger extends ConsoleLogger {
+  debug(message: string, meta?: Record<string, unknown>): void {
+    if (process.env.HERMES_DEBUG === 'true') {
+      console.debug(`\x1b[90m[DEBUG] ${message}\x1b[0m`, meta ?? '');
+    }
+  }
+
+  info(message: string, meta?: Record<string, unknown>): void {
+    console.info(`\x1b[36m[INFO] ${message}\x1b[0m`, meta ?? '');
+  }
+
+  warn(message: string, meta?: Record<string, unknown>): void {
+    console.warn(`\x1b[33m[WARN] ${message}\x1b[0m`, meta ?? '');
+  }
+
+  error(message: string, error?: Error, meta?: Record<string, unknown>): void {
+    console.error(`\x1b[31m[ERROR] ${message}\x1b[0m`, error ?? '', meta ?? '');
+  }
+}
 
 const program = new Command();
 program
@@ -15,28 +39,70 @@ program.command('chat')
   .description('Start an interactive agent chat')
   .option('-s, --session <id>', 'session id', 'default')
   .option('--once <text>', 'run one prompt and exit')
+  .option('--stream', 'enable streaming output')
+  .option('--debug', 'enable debug logging')
   .action(async (opts) => {
     const config = loadConfig(process.cwd());
-    const runtime = await createRuntime(config);
+    const logger = new ColoredLogger();
+
+    if (opts.debug) {
+      process.env.HERMES_DEBUG = 'true';
+    }
+
+    const runtime = await createRuntime(config, { logger });
 
     if (opts.once) {
-      const result = await runtime.run({ sessionId: opts.session, text: opts.once });
-      console.log(result.text);
+      const result = await runtime.run(
+        { sessionId: opts.session, text: opts.once, stream: opts.stream },
+        {
+          onText: opts.stream ? (text) => process.stdout.write(text) : undefined,
+        }
+      );
+
+      if (opts.stream) {
+        process.stdout.write('\n');
+      } else {
+        console.log(result.text);
+      }
+
+      // 显示 Token 统计
+      if (result.usage) {
+        console.log(`\n\x1b[90mTokens: ${result.usage.totalTokens} (prompt: ${result.usage.promptTokens}, completion: ${result.usage.completionTokens})\x1b[0m`);
+      }
       return;
     }
 
-    console.log('Hermes Clone Agent CLI');
-    console.log(`Provider: ${config.provider} | Model: ${config.model}`);
+    console.log('\x1b[1m\x1b[36mHermes Clone Agent CLI\x1b[0m');
+    console.log(`Provider: \x1b[33m${config.provider}\x1b[0m | Model: \x1b[33m${config.model}\x1b[0m`);
+    if (opts.stream) {
+      console.log(`\x1b[32mStreaming: enabled\x1b[0m`);
+    }
     console.log('输入 /exit 退出。\n');
 
     const rl = readline.createInterface({ input, output });
     try {
       while (true) {
-        const text = await rl.question('你 > ');
+        const text = await rl.question('\x1b[1m你 > \x1b[0m');
         if (['/exit', 'exit', 'quit', '/q'].includes(text.trim())) break;
         if (!text.trim()) continue;
-        const result = await runtime.run({ sessionId: opts.session, text });
-        console.log(`\nAgent > ${result.text}\n`);
+
+        const result = await runtime.run(
+          { sessionId: opts.session, text, stream: opts.stream },
+          {
+            onText: opts.stream ? (chunk) => process.stdout.write(chunk) : undefined,
+          }
+        );
+
+        if (!opts.stream) {
+          console.log(`\n\x1b[1mAgent > \x1b[0m${result.text}\n`);
+        } else {
+          process.stdout.write('\n\n');
+        }
+
+        // 显示 Token 统计
+        if (result.usage) {
+          console.log(`\x1b[90m迭代: ${result.iterations} | Tokens: ${result.usage.totalTokens} (prompt: ${result.usage.promptTokens}, completion: ${result.usage.completionTokens})\x1b[0m`);
+        }
       }
     } finally {
       rl.close();
@@ -49,6 +115,30 @@ program.command('doctor')
     const config = loadConfig(process.cwd());
     const safe = { ...config, apiKey: config.apiKey ? '***' : undefined };
     console.log(JSON.stringify(safe, null, 2));
+  });
+
+program.command('health')
+  .description('Check provider health')
+  .action(async () => {
+    const config = loadConfig(process.cwd());
+    const runtime = await createRuntime(config);
+
+    // 这里需要添加 healthCheck 方法到 runtime
+    console.log(`Provider: ${config.provider}`);
+    console.log(`Model: ${config.model}`);
+    console.log(`Base URL: ${config.baseUrl}`);
+    console.log('\nChecking provider health...');
+
+    // 简单的测试调用
+    try {
+      const result = await runtime.run({ sessionId: '_health', text: 'ping' });
+      console.log(`\x1b[32m✓ Provider is healthy\x1b[0m`);
+      if (result.usage) {
+        console.log(`  Tokens: ${result.usage.totalTokens}`);
+      }
+    } catch (error) {
+      console.log(`\x1b[31m✗ Provider error:\x1b[0m`, error);
+    }
   });
 
 await program.parseAsync();
