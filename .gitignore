@@ -6,3 +6,4 @@ dist
 data/sessions/*.jsonl
 data/sessions/*.tmp
 coverage
+*.tsbuildinfo
