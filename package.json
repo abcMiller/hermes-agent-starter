@@ -1,0 +1,29 @@
+{
+  "name": "hermes-agent-starter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A Hermes Agent inspired starter project with Agent Core, Tool System, Memory, Skills and CLI.",
+  "scripts": {
+    "dev": "tsx apps/cli/src/index.ts chat",
+    "cli": "tsx apps/cli/src/index.ts",
+    "build": "tsc -b",
+    "clean": "rm -rf apps/*/dist packages/*/dist",
+    "typecheck": "tsc -b --pretty",
+    "demo": "HERMES_PROVIDER=mock tsx apps/cli/src/index.ts chat --once \"帮我查看当前目录有哪些文件\""
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "dotenv": "^16.4.7",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

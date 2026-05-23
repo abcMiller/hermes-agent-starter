@@ -1,0 +1,13 @@
+{
+  "provider": "mock",
+  "model": "gpt-4o-mini",
+  "baseUrl": "https://api.openai.com/v1",
+  "dataDir": "./data",
+  "workspaceDir": "./workspace",
+  "maxIterations": 8,
+  "tools": {
+    "enableShell": false,
+    "shellTimeoutMs": 15000,
+    "allowedShellCommands": ["pwd", "ls", "cat", "echo", "node", "npm", "pnpm", "git"]
+  }
+}

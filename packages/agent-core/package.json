@@ -1,0 +1,20 @@
+{
+  "name": "@hermes-clone/agent-core",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@hermes-clone/config": "workspace:*",
+    "@hermes-clone/memory": "workspace:*",
+    "@hermes-clone/providers": "workspace:*",
+    "@hermes-clone/skills": "workspace:*",
+    "@hermes-clone/tools": "workspace:*"
+  }
+}

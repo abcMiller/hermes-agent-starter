@@ -1,0 +1,20 @@
+{
+  "name": "@hermes-clone/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": {
+    "hermes-clone": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@hermes-clone/agent-core": "workspace:*",
+    "@hermes-clone/config": "workspace:*",
+    "@hermes-clone/memory": "workspace:*",
+    "@hermes-clone/providers": "workspace:*",
+    "@hermes-clone/skills": "workspace:*",
+    "@hermes-clone/tools": "workspace:*"
+  }
+}
